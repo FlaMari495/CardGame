@@ -9,6 +9,7 @@ namespace FlMr_CardBase
     /// <summary>
     /// カードの位置情報を保持、更新するクラス
     /// </summary>
+    [RequireComponent(typeof(CardObjUtility))]
     internal class DataManager : MonoBehaviour
     {
         /// <summary>
@@ -17,12 +18,28 @@ namespace FlMr_CardBase
         private CardObjectData Data { get; set; }
 
         /// <summary>
+        /// 各Positionの枚数制限
+        /// </summary>
+        private Dictionary<Type, int> CardNumberLimitMap { get; set; }
+
+        /// <summary>
         /// 全Position情報をもとに初期化する
         /// </summary>
-        /// <param name="positions"></param>
-        internal void Initialize(List<Type> positions)
+        /// <param name="cardNumberLimitMap">各Positionの枚数制限</param>
+        internal void Initialize(Dictionary<Type, int> cardNumberLimitMap)
         {
-            Data = new CardObjectData(positions);
+            CardNumberLimitMap = cardNumberLimitMap;
+            Data = new CardObjectData(cardNumberLimitMap.Keys.ToList());
+        }
+
+        /// <summary>
+        /// カードを追加、又は移動可能かを判定する
+        /// </summary>
+        /// <param name="posType"></param>
+        /// <returns></returns>
+        internal bool CanAdd(Type posType)
+        {
+            return CardNumberLimitMap[posType] < 0 || GetCardsOfPos(posType).Count < CardNumberLimitMap[posType];
         }
 
         /// <summary>
@@ -33,6 +50,11 @@ namespace FlMr_CardBase
         /// <param name="positiveCardId">カードのIdとして自然数を使用するか、負の整数を使用するか</param>
         internal void AddCard(Type posType, int? index,bool positiveCardId)
         {
+            if (!CanAdd(posType))
+            {
+                throw new Exception($"ポジション[{posType}]のカード枚数の上限を超過します");
+            }
+
             Data.AddCard(posType, index, positiveCardId);
         }
 
@@ -44,8 +66,21 @@ namespace FlMr_CardBase
         /// <param name="index">カードを何番目に挿入するか</param>
         internal void MoveCard(int cardObjId,Type posTo, int? index)
         {
+            if (!CanAdd(posTo))
+            {
+                throw new Exception($"ポジション[{posTo}]のカード枚数の上限を超過します");
+            }
+
             Data.MoveCard(cardObjId, posTo, index);
         }
+
+        /// <summary>
+        /// 指定した位置に存在するカードidを返す
+        /// (読み取り専用)
+        /// </summary>
+        /// <param name="posType"></param>
+        /// <returns></returns>
+        internal List<int> GetCardsOfPos(Type posType)=> Data.GetCardsOfPos(posType);
 
         /// <summary>
         /// カードの情報すべてをJson形式に変換する
@@ -137,6 +172,14 @@ namespace FlMr_CardBase
                 string posToId = posTo.ToString();
                 dataCore[posToId].Insert(index ?? dataCore[posToId].Count, cardObjId);
             }
+
+            /// <summary>
+            /// 指定した位置に存在するカードのId
+            /// (読み取り専用)
+            /// </summary>
+            /// <param name="posId"></param>
+            /// <returns></returns>
+            internal List<int> GetCardsOfPos(Type posType) => new (dataCore[posType.ToString()]);
         }
     }
 

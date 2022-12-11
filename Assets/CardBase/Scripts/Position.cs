@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace FlMr_CardBase
 {
-    public class Position : MonoBehaviour
+    public abstract class Position : MonoBehaviour
     {
     }
 }
